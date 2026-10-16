@@ -1,0 +1,57 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isCurator() {
+      return request.auth != null && request.auth.token.email == 'curator@dvij-shagai.app';
+    }
+    // id документа = поток + "_" + SHA-256 отпечаток email (64 hex-символа)
+    function validId(id) {
+      return id == request.resource.data.stream + '_' + id.split('_')[1]
+        && id.split('_')[1].matches('^[0-9a-f]{64}$')
+        && request.resource.data.stream in ['pro', 'new'];
+    }
+    function numIn(v, lo, hi) { return (v is int || v is float) && v >= lo && v <= hi; }
+    function okEmail(v) { return v is string && v.size() <= 120 && v.matches('^[^@ ]+@[^@ ]+[.][^@ ]+$'); }
+    function okName(v) { return v is string && v.size() >= 1 && v.size() <= 80; }
+    function stamped() { return request.resource.data.updatedAt == request.time; }
+
+    // Анкета старта: участница может только отправить, читает только куратор
+    match /starts/{id} {
+      allow read, delete: if isCurator();
+      allow create, update: if validId(id) && stamped()
+        && request.resource.data.keys().hasOnly(['stream','email','name','age','weight','height','waist','hips','chest','stepsPlan','updatedAt'])
+        && okEmail(request.resource.data.email) && okName(request.resource.data.name)
+        && numIn(request.resource.data.age, 10, 100) && numIn(request.resource.data.weight, 30, 300)
+        && numIn(request.resource.data.height, 100, 230) && numIn(request.resource.data.waist, 30, 250)
+        && numIn(request.resource.data.hips, 30, 250) && numIn(request.resource.data.chest, 30, 250)
+        && numIn(request.resource.data.stepsPlan, 500, 60000);
+    }
+
+    // Анкета финала: так же
+    match /finals/{id} {
+      allow read, delete: if isCurator();
+      allow create, update: if validId(id) && stamped()
+        && request.resource.data.keys().hasOnly(['stream','email','weight','waist','hips','chest','updatedAt'])
+        && okEmail(request.resource.data.email)
+        && numIn(request.resource.data.weight, 30, 300) && numIn(request.resource.data.waist, 30, 250)
+        && numIn(request.resource.data.hips, 30, 250) && numIn(request.resource.data.chest, 30, 250);
+    }
+
+    // Ежедневные отчёты: видят все (здесь нет email), пишет участница
+    match /daily/{id} {
+      allow read: if true;
+      allow delete: if isCurator();
+      allow create, update: if validId(id) && stamped()
+        && request.resource.data.keys().hasOnly(['stream','name','days','updatedAt'])
+        && okName(request.resource.data.name)
+        && request.resource.data.days is map
+        && request.resource.data.days.keys().hasOnly(['d1','d2','d3','d4','d5','d6','d7']);
+    }
+
+    // Данные старого санатория — только куратору
+    match /sanatorium_marathon/{doc} {
+      allow read, write: if isCurator();
+    }
+  }
+}
