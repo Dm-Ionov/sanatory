@@ -239,12 +239,21 @@ var App = (function () {
     btn.disabled = false; btn.textContent = "Сохранить день " + n;
   }
 
-  var boardRows = [];
+  var boardRows = [], boardReq = 0;
   async function loadBoard() {
+    var req = ++boardReq;
     try {
       var snap = await db.collection("daily").where("stream", "==", stream).get();
-      boardRows = snap.docs.map(function (x) { return Object.assign({id: x.id}, x.data()); })
-        .sort(function (a, b) { return String(a.name).localeCompare(String(b.name), "ru"); });
+      if (req !== boardReq) return; // пришёл ответ на устаревший запрос
+      boardRows = snap.docs.map(function (x) { return Object.assign({id: x.id}, x.data()); });
+      // Свою строку берём из локальных данных: пока запись не дошла до сервера,
+      // кэш Firestore может вернуть неполную копию документа.
+      if (me) {
+        var mine = boardRows.filter(function (r) { return r.id === me.id; })[0];
+        if (mine) { mine.days = me.days; mine.name = me.name; }
+        else if (Object.keys(me.days).length) boardRows.push({id: me.id, name: me.name, days: me.days});
+      }
+      boardRows.sort(function (a, b) { return String(a.name).localeCompare(String(b.name), "ru"); });
       renderBoard();
     } catch (e) {
       console.error(e);
