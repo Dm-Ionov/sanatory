@@ -9,6 +9,11 @@ var ID_SALT = "dvij-shagai/v1/";
 
 firebase.initializeApp(FIREBASE_CONFIG);
 var db = firebase.firestore();
+// Если основной канал связи с Firestore режет сеть, VPN или браузер телефона,
+// SDK сам переключится на long-polling (в SDK 10+ это включено по умолчанию).
+db.settings({experimentalAutoDetectLongPolling: true});
+var SERVER = {source: "server"}; // читаем только с сервера, не подсовываем пустой кэш
+var NET_TIMEOUT = 15000;
 var auth = firebase.auth();
 
 var App = (function () {
@@ -34,10 +39,17 @@ var App = (function () {
   function lsGet(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
   function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
   function showError(id, msg) { var el = $(id); el.textContent = msg; el.classList.toggle("show", !!msg); }
+  // Запрос к базе с ограничением по времени, чтобы кнопка не висела бесконечно
+  function withTimeout(p) {
+    return Promise.race([p, new Promise(function (_, rej) {
+      setTimeout(function () { rej({code: "timeout"}); }, NET_TIMEOUT);
+    })]);
+  }
+  var NO_NET = "Нет связи с базой. Попробуй переключиться между Wi-Fi и мобильным интернетом или выключить VPN — и нажми ещё раз.";
   function fbError(e) {
     console.error(e);
+    if (e && (e.code === "unavailable" || e.code === "timeout")) return NO_NET;
     if (e && e.code === "permission-denied") return "База не приняла данные. Проверь, что все поля заполнены корректно, и попробуй ещё раз.";
-    if (e && e.code === "unavailable") return "Нет связи с сервером. Проверь интернет и попробуй ещё раз.";
     return "Не получилось сохранить. Попробуй ещё раз через минуту.";
   }
   function fmtDate(ts) { return ts && ts.toDate ? ts.toDate().toLocaleDateString("ru-RU") : "—"; }
@@ -100,7 +112,7 @@ var App = (function () {
       try {
         data.stream = stream;
         data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-        await db.collection("starts").doc(await docId(stream, data.email)).set(data);
+        await withTimeout(db.collection("starts").doc(await docId(stream, data.email)).set(data));
         delete data.updatedAt;
         lsSet("san_start_" + stream, data);
         lsSet("san_me", {email: data.email, name: data.name});
@@ -128,7 +140,7 @@ var App = (function () {
       try {
         data.stream = stream;
         data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-        await db.collection("finals").doc(await docId(stream, data.email)).set(data);
+        await withTimeout(db.collection("finals").doc(await docId(stream, data.email)).set(data));
         delete data.updatedAt;
         lsSet("san_final_" + stream, data);
         renderFinalDelta(data, lsGet("san_start_" + stream));
@@ -168,7 +180,7 @@ var App = (function () {
       var btn = $("dailyLoginBtn"); btn.disabled = true; btn.textContent = "Открываем…";
       try {
         var id = await docId(stream, data.email);
-        var snap = await db.collection("daily").doc(id).get();
+        var snap = await withTimeout(db.collection("daily").doc(id).get(SERVER));
         me = {email: data.email, name: data.name, id: id, days: (snap.exists && snap.data().days) || {}};
         lsSet("san_me", {email: data.email, name: data.name});
         renderDays();
@@ -225,10 +237,10 @@ var App = (function () {
     var btn = $("d" + n + "_btn"); btn.disabled = true; btn.textContent = "Сохраняем…";
     try {
       var days = {}; days["d" + n] = d;
-      await db.collection("daily").doc(me.id).set({
+      await withTimeout(db.collection("daily").doc(me.id).set({
         stream: stream, name: me.name, days: days,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      }, {merge: true});
+      }, {merge: true}));
       me.days["d" + n] = d;
       var st = dayStatus(d), el = $("day" + n);
       el.classList.remove("full", "part", "none"); el.classList.add(st);
@@ -243,7 +255,7 @@ var App = (function () {
   async function loadBoard() {
     var req = ++boardReq;
     try {
-      var snap = await db.collection("daily").where("stream", "==", stream).get();
+      var snap = await withTimeout(db.collection("daily").where("stream", "==", stream).get(SERVER));
       if (req !== boardReq) return; // пришёл ответ на устаревший запрос
       boardRows = snap.docs.map(function (x) { return Object.assign({id: x.id}, x.data()); });
       // Свою строку берём из локальных данных: пока запись не дошла до сервера,
@@ -257,7 +269,9 @@ var App = (function () {
       renderBoard();
     } catch (e) {
       console.error(e);
-      $("boardBody").innerHTML = '<tr><td colspan="8" class="empty-state">Не удалось загрузить отчёты</td></tr>';
+      if (req !== boardReq) return;
+      $("boardBody").innerHTML = '<tr><td colspan="8" class="empty-state">Нет связи с базой — отчёты не загрузились.<br>' +
+        '<button class="btn-view" style="margin-top:10px" onclick="App.loadBoard()">Попробовать ещё раз</button></td></tr>';
     }
   }
   function renderBoard() {
@@ -326,8 +340,8 @@ var App = (function () {
     document.querySelectorAll("#streamSeg button").forEach(function (b) { b.classList.toggle("active", b.dataset.s === adminStream); });
     $("adminBody").innerHTML = '<tr><td colspan="7" class="loading">Загружаем…</td></tr>';
     try {
-      var q = function (c) { return db.collection(c).where("stream", "==", adminStream).get(); };
-      var res = await Promise.all([q("starts"), q("finals"), q("daily")]);
+      var q = function (c) { return db.collection(c).where("stream", "==", adminStream).get(SERVER); };
+      var res = await withTimeout(Promise.all([q("starts"), q("finals"), q("daily")]));
       var byId = {};
       var put = function (snap, key) {
         snap.docs.forEach(function (x) { (byId[x.id] = byId[x.id] || {id: x.id})[key] = x.data(); });
@@ -440,6 +454,6 @@ var App = (function () {
   route();
   return {
     showForm: showForm, dailyLogout: dailyLogout, toggleDay: toggleDay, saveDay: saveDay, boardDetail: boardDetail,
-    closeModal: closeModal, adminLogout: adminLogout, openDetail: openDetail, exportCSV: exportCSV
+    closeModal: closeModal, loadBoard: loadBoard, adminLogout: adminLogout, openDetail: openDetail, exportCSV: exportCSV
   };
 })();
