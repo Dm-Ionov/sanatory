@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Санаторий — Шагай Дома</title>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=3">
+<title>Движ-чат — Шагай Дома</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=4">
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -13,13 +13,9 @@
 <body>
 
 <div class="header">
-  <div class="header-logo">
-    <div class="logo-star">★</div>
-    <div>
-      <div class="logo-text-top">Шагай дома</div>
-      <div class="logo-text-main">Санаторий</div>
-      <div class="logo-text-sub">Для похудения</div>
-    </div>
+  <div class="logo">
+    <div class="logo-main"><span class="logo-dviz">ДВИЖ</span><span class="logo-chat"><span>ЧАТ</span></span></div>
+    <div class="logo-sub">от Шагай дома</div>
   </div>
   <div class="stream-chip" id="streamChip"></div>
 </div>
@@ -28,13 +24,13 @@
 <div class="page" id="page-start">
   <div class="user-wrap">
     <div class="hero">
-      <div class="hero-eyebrow">Анкета участницы</div>
-      <div class="hero-title">Старт</div>
-      <div class="hero-title-sub">марафона</div>
+      <svg class="bolt" viewBox="0 0 64 100" aria-hidden="true"><path d="M44 0 2 58l26 7-14 35 48-62-26-6z"/></svg>
+      <div class="tag">Дневник участницы</div>
+      <h1 class="hero-title">Ваш старт</h1>
       <div class="hero-sub">Заполни свои стартовые параметры.<br>Ответы видит только куратор.</div>
     </div>
     <form class="card" id="startForm" novalidate>
-      <div class="card-title"><span class="star">★</span> Кто ты, участница?</div>
+      <div class="card-title">Кто ты, участница?</div>
       <label for="st_email">Email</label>
       <input type="email" id="st_email" required autocomplete="email">
       <div class="hint-text">Тот же email укажешь в финальной анкете и в отчётах — так мы тебя узнаем.</div>
@@ -61,9 +57,9 @@
       <button type="submit" class="btn-submit" id="startBtn">Отправить анкету →</button>
     </form>
     <div class="success-screen" id="startSuccess">
-      <div class="success-icon">★</div>
+      <div class="success-icon"><svg class="bolt-icon" viewBox="0 0 64 100" aria-hidden="true"><path d="M44 0 2 58l26 7-14 35 48-62-26-6z"/></svg></div>
       <div class="success-title">Анкета принята!</div>
-      <div class="success-sub">Стартовые параметры сохранены. Удачного марафона!<br>Если ошиблась — просто отправь анкету ещё раз с тем же email.</div>
+      <div class="success-sub">Стартовые параметры сохранены. Удачного интенсива!<br>Если ошиблась — просто отправь анкету ещё раз с тем же email.</div>
       <button class="btn-secondary" onclick="App.showForm('start')">Изменить ответы</button>
     </div>
   </div>
@@ -73,13 +69,13 @@
 <div class="page" id="page-final">
   <div class="user-wrap">
     <div class="hero">
-      <div class="hero-eyebrow">Анкета участницы</div>
-      <div class="hero-title">Финал</div>
-      <div class="hero-title-sub">марафона</div>
+      <svg class="bolt" viewBox="0 0 64 100" aria-hidden="true"><path d="M44 0 2 58l26 7-14 35 48-62-26-6z"/></svg>
+      <div class="tag">Дневник участницы</div>
+      <h1 class="hero-title">Ваш финиш</h1>
       <div class="hero-sub">Время подвести итоги! Внеси финальные параметры.<br>Ответы видит только куратор.</div>
     </div>
     <form class="card" id="finalForm" novalidate>
-      <div class="card-title"><span class="star">★</span> Финальные параметры</div>
+      <div class="card-title">Финальные параметры</div>
       <label for="fn_email">Email</label>
       <input type="email" id="fn_email" required autocomplete="email">
       <div class="hint-text">Тот же, что в стартовой анкете, — чтобы мы тебя узнали.</div>
@@ -95,9 +91,9 @@
       <button type="submit" class="btn-submit" id="finalBtn">Отправить итоги →</button>
     </form>
     <div class="success-screen" id="finalSuccess">
-      <div class="success-icon">★</div>
+      <div class="success-icon"><svg class="bolt-icon" viewBox="0 0 64 100" aria-hidden="true"><path d="M44 0 2 58l26 7-14 35 48-62-26-6z"/></svg></div>
       <div class="success-title">Ты молодец!</div>
-      <div class="success-sub">Финальные параметры сохранены. Спасибо, что прошла марафон с нами!</div>
+      <div class="success-sub">Финальные параметры сохранены. Спасибо, что прошла интенсив с нами!</div>
       <div class="delta-grid" id="finalDelta"></div>
       <button class="btn-secondary" onclick="App.showForm('final')">Изменить ответы</button>
     </div>
@@ -108,14 +104,14 @@
 <div class="page" id="page-daily">
   <div class="user-wrap wide">
     <div class="hero">
-      <div class="hero-eyebrow">Ежедневный отчёт</div>
-      <div class="hero-title">Дневник</div>
-      <div class="hero-title-sub">недели</div>
+      <svg class="bolt" viewBox="0 0 64 100" aria-hidden="true"><path d="M44 0 2 58l26 7-14 35 48-62-26-6z"/></svg>
+      <div class="tag">Чек-лист</div>
+      <h1 class="hero-title">Моя неделя<br>с движ-чатом</h1>
       <div class="hero-sub">Отмечай каждый день. Отчёты видят все участницы потока.</div>
     </div>
 
     <form class="card" id="dailyLogin" novalidate>
-      <div class="card-title"><span class="star">★</span> Кто ты, участница?</div>
+      <div class="card-title">Кто ты, участница?</div>
       <label for="dl_email">Email</label>
       <input type="email" id="dl_email" required autocomplete="email">
       <div class="hint-text">Email не показывается другим участницам — он нужен, чтобы найти твой дневник.</div>
@@ -140,7 +136,7 @@
 
     <div class="board-card">
       <div class="board-head">
-        <div class="board-title">★ Отчёты потока</div>
+        <div class="board-title">Отчёты потока</div>
         <div class="legend"><span class="cell c-full"></span> полный <span class="cell c-part"></span> неполный <span class="cell c-none"></span> нет отчёта</div>
       </div>
       <div class="table-wrap"><table class="board"><thead><tr><th>Участница</th><th>Д1</th><th>Д2</th><th>Д3</th><th>Д4</th><th>Д5</th><th>Д6</th><th>Д7</th></tr></thead><tbody id="boardBody"><tr><td colspan="8" class="loading">Загрузка…</td></tr></tbody></table></div>
@@ -152,7 +148,7 @@
 <div class="page" id="page-admin">
   <div class="user-wrap" id="adminLoginWrap">
     <form class="card login-card" id="adminLogin" novalidate>
-      <div class="card-title"><span class="star">★</span> Вход для куратора</div>
+      <div class="card-title">Вход для куратора</div>
       <label for="adm_pw">Пароль</label>
       <input type="password" id="adm_pw" required autocomplete="current-password">
       <div class="form-error" id="adminError"></div>
@@ -161,7 +157,7 @@
   </div>
   <div class="admin-wrap" id="adminPanel" hidden>
     <div class="admin-top">
-      <h2>★ Панель куратора</h2>
+      <h2>Панель куратора</h2>
       <div class="seg" id="streamSeg">
         <button data-s="pro">Продвинутый</button><button data-s="new">Начинающие</button>
       </div>
@@ -209,6 +205,8 @@
   </div>
 </div>
 
-<script src="app.js?v=3"></script>
+<div class="footer">Шагай дома · 2026</div>
+
+<script src="app.js?v=4"></script>
 </body>
 </html>
